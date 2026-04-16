@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NISA 将来シミュレーター</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #080c10;
+  --surface: #0e1419;
+  --surface2: #141c24;
+  --border: #1e2d3d;
+  --text: #cdd9e5;
+  --muted: #556170;
+  --accent: #39d0f0;
+  --green: #3ddc84;
+  --yellow: #f0c040;
+  --red: #f07070;
+  --glow: rgba(57,208,240,0.15);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+  padding: 28px 20px 48px;
+  overflow-x: hidden;
+}
+
+/* Background grid */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(57,208,240,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,208,240,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
+
+/* Header */
+.hdr { margin-bottom: 32px; }
+.hdr-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.hdr-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: var(--text);
+}
+.hdr-title span { color: var(--accent); }
+.hdr-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.warning-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(240,192,64,0.1);
+  border: 1px solid rgba(240,192,64,0.3);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--yellow);
+  font-family: 'DM Mono', monospace;
+  margin-top: 10px;
+}
+
+/* Controls */
+.controls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.ctrl-group label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.ctrl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ctrl-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--accent);
+  min-width: 80px;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.ctrl-full { grid-column: 1 / -1; }
+
+/* Scenario tabs */
+.scenarios {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.scenario-btn {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.scenario-btn:hover { border-color: var(--accent); }
+.scenario-btn.active {
+  background: rgba(57,208,240,0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(57,208,240,0.1);
+}
+.scenario-btn .s-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.scenario-btn .s-rate {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px;
+  letter-spacing: 0.05em;
+}
+.scenario-btn .s-desc { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.s-bear { color: var(--red); }
+.s-base { color: var(--yellow); }
+.s-bull { color: var(--green); }
+
+/* KPI row */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+.kpi-l {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.kpi-v {
+  font-family: 'DM Mono', monospace;
+  font-size: 18px;
+  font-weight: 500;
+}
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+.c-accent { color: var(--accent); }
+.c-green { color: var(--green); }
+.c-yellow { color: var(--yellow); }
+.c-muted { color: var(--muted); }
+
+/* Chart */
+.chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.chart-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+canvas { width: 100% !important; }
+
+/* Legend */
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+.legend-dot { width: 10px; height: 3px; border-radius: 2px; }
+
+/* Milestone table */
+.milestones {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.mile-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mile-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+table.mile {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.mile th {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.06em;
+  text-align: right;
+  padding: 0 10px 10px;
+  font-weight: 400;
+}
+table.mile th:first-child { text-align: left; }
+table.mile td {
+  padding: 9px 10px;
+  border-top: 1px solid var(--border);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  text-align: right;
+  vertical-align: middle;
+}
+table.mile td:first-child {
+  text-align: left;
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 12px;
+}
+.age-badge {
+  display: inline-block;
+  background: rgba(57,208,240,0.1);
+  border: 1px solid rgba(57,208,240,0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  margin-left: 6px;
+}
+.highlight-row td { background: rgba(57,208,240,0.04); }
+
+@media (max-width: 600px) {
+  .controls { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: 1fr 1fr; }
+  .scenarios { flex-direction: column; }
+  .hdr-title { font-size: 36px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hdr">
+  <div class="hdr-eyebrow">NISA Portfolio</div>
+  <div class="hdr-title">将来<span>シミュレーター</span></div>
+  <div class="hdr-sub">現在の資産・積立設定をもとに、将来の資産額を試算します。</div>
+  <div class="warning-badge">⚠ 過去の平均リターンに基づく試算です。将来の運用成果を保証するものではありません。</div>
+</div>
+
+<!-- Scenarios -->
+<div class="scenarios">
+  <div class="scenario-btn" id="btn-bear" onclick="setScenario('bear')">
+    <div class="s-label">悲観シナリオ</div>
+    <div class="s-rate s-bear">+4%</div>
+    <div class="s-desc">低成長・停滞期</div>
+  </div>
+  <div class="scenario-btn active" id="btn-base" onclick="setScenario('base')">
+    <div class="s-label">中立シナリオ</div>
+    <div class="s-rate s-base">+7%</div>
+    <div class="s-desc">過去平均ベース</div>
+  </div>
+  <div class="scenario-btn" id="btn-bull" onclick="setScenario('bull')">
+    <div class="s-label">楽観シナリオ</div>
+    <div class="s-rate s-bull">+10%</div>
+    <div class="s-desc">好景気・高成長</div>
+  </div>
+  <div class="scenario-btn" id="btn-custom" onclick="setScenario('custom')">
+    <div class="s-label">カスタム</div>
+    <div class="s-rate" style="color:var(--accent)" id="custom-rate-display">+7%</div>
+    <div class="s-desc">自分で設定</div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="ctrl-group">
+    <label>年間積立額（S&P500）</label>
+    <div class="ctrl-row">
+      <span class="ctrl-val" id="disp-sp">¥60万</span>
+      <input type="range" id="sl-sp" min="12" max="120" step="12" value="60"
+        oninput="update()">
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <label>年間積立額（FANG+）</label>
+    <div class="ctrl-row">
+      <span class="ctrl-val" id="disp-fang">¥24万</span>
+      <input type="range" id="sl-fang" min="12" max="120" step="12" value="24"
+        oninput="update()">
+    </div>
+  </div>
+  <div class="ctrl-group">
+    <label>シミュレーション期間</label>
+    <div class="ctrl-row">
+      <span class="ctrl-val" id="disp-yr">30年</span>
+      <input type="range" id="sl-yr" min="5" max="40" step="5" value="30"
+        oninput="update()">
+    </div>
+  </div>
+  <div class="ctrl-group" id="custom-ctrl" style="opacity:0.3;pointer-events:none">
+    <label>カスタム年利率</label>
+    <div class="ctrl-row">
+      <span class="ctrl-val" id="disp-custom">7%</span>
+      <input type="range" id="sl-custom" min="1" max="15" step="0.5" value="7"
+        oninput="update()">
+    </div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-l">現在の資産</div>
+    <div class="kpi-v c-muted">¥808,835</div>
+    <div class="kpi-sub">含み益 +45.5%</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">総積立予定額</div>
+    <div class="kpi-v c-accent" id="kpi-total-invest">—</div>
+    <div class="kpi-sub" id="kpi-invest-sub">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">最終予測評価額</div>
+    <div class="kpi-v c-green" id="kpi-final">—</div>
+    <div class="kpi-sub" id="kpi-final-sub">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-l">総含み益（予測）</div>
+    <div class="kpi-v c-yellow" id="kpi-gain">—</div>
+    <div class="kpi-sub" id="kpi-gain-sub">—</div>
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-wrap">
+  <div class="chart-title">資産推移グラフ（万円）</div>
+  <canvas id="myChart" height="260"></canvas>
+  <div class="chart-legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#39d0f0"></span>評価額（中立）</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#3ddc84"></span>評価額（楽観）</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#f07070"></span>評価額（悲観）</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#556170;opacity:0.6"></span>投資元本累計</div>
+  </div>
+</div>
+
+<!-- Milestones -->
+<div class="milestones">
+  <div class="mile-title">マイルストーン試算</div>
+  <table class="mile">
+    <thead>
+      <tr>
+        <th>時点</th>
+        <th>累計投資額</th>
+        <th>悲観 (4%)</th>
+        <th>中立 (7%)</th>
+        <th>楽観 (10%)</th>
+      </tr>
+    </thead>
+    <tbody id="mile-tbody"></tbody>
+  </table>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ---- State ----
+const CURRENT = 808835;
+const AGE_NOW = 24;
+let scenario = 'base';
+const rates = { bear: 0.04, base: 0.07, bull: 0.10 };
+
+function getRate() {
+  if (scenario === 'custom') return parseFloat(document.getElementById('sl-custom').value) / 100;
+  return rates[scenario] || 0.07;
+}
+
+function setScenario(s) {
+  scenario = s;
+  ['bear','base','bull','custom'].forEach(k => {
+    document.getElementById('btn-' + k).classList.toggle('active', k === s);
+  });
+  const cc = document.getElementById('custom-ctrl');
+  cc.style.opacity = s === 'custom' ? '1' : '0.3';
+  cc.style.pointerEvents = s === 'custom' ? 'auto' : 'none';
+  update();
+}
+
+function fmt(n) {
+  if (n >= 1e8) return (n/1e8).toFixed(1) + '億';
+  if (n >= 1e4) return Math.round(n/1e4) + '万';
+  return Math.round(n).toLocaleString();
+}
+function fmtFull(n) {
+  return '¥' + Math.round(n/10000) + '万';
+}
+
+// Simulate year by year
+function simulate(annualRate, years, annualContrib) {
+  let val = CURRENT;
+  const data = [val];
+  for (let y = 1; y <= years; y++) {
+    val = val * (1 + annualRate) + annualContrib;
+    data.push(val);
+  }
+  return data;
+}
+
+// ---- Chart ----
+let chartInstance = null;
+
+function buildChart(years, annualContrib) {
+  const labels = [];
+  for (let y = 0; y <= years; y++) labels.push(y === 0 ? '現在' : y + '年後');
+
+  const dataBear = simulate(0.04, years, annualContrib).map(v => v / 10000);
+  const dataBase = simulate(0.07, years, annualContrib).map(v => v / 10000);
+  const dataBull = simulate(0.10, years, annualContrib).map(v => v / 10000);
+
+  // Cost line
+  const dataCost = [];
+  let cost = CURRENT;
+  dataCost.push(cost / 10000);
+  for (let y = 1; y <= years; y++) {
+    cost += annualContrib;
+    dataCost.push(cost / 10000);
+  }
+
+  const ctx = document.getElementById('myChart').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: '楽観 (10%)',
+          data: dataBull,
+          borderColor: '#3ddc84',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4,
+          borderDash: [],
+        },
+        {
+          label: '中立 (7%)',
+          data: dataBase,
+          borderColor: '#39d0f0',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4,
+        },
+        {
+          label: '悲観 (4%)',
+          data: dataBear,
+          borderColor: '#f07070',
+          borderWidth: 1.5,
+          pointRadius: 0,
+          fill: false,
+          tension: 0.4,
+        },
+        {
+          label: '投資元本',
+          data: dataCost,
+          borderColor: '#556170',
+          borderWidth: 1,
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          borderDash: [4, 4],
+        },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0e1419',
+          borderColor: '#1e2d3d',
+          borderWidth: 1,
+          titleColor: '#556170',
+          bodyColor: '#cdd9e5',
+          titleFont: { family: 'DM Mono', size: 11 },
+          bodyFont: { family: 'DM Mono', size: 12 },
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ¥${Math.round(ctx.parsed.y)}万`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(30,45,61,0.6)' },
+          ticks: {
+            color: '#556170',
+            font: { family: 'DM Mono', size: 10 },
+            maxTicksLimit: 9,
+          }
+        },
+        y: {
+          grid: { color: 'rgba(30,45,61,0.6)' },
+          ticks: {
+            color: '#556170',
+            font: { family: 'DM Mono', size: 10 },
+            callback: v => '¥' + Math.round(v) + '万'
+          }
+        }
+      }
+    }
+  });
+}
+
+// ---- Milestones ----
+function buildMilestones(years, annualContrib) {
+  const tbody = document.getElementById('mile-tbody');
+  tbody.innerHTML = '';
+
+  const milestoneYears = [5, 10, 20, 30, 40].filter(y => y <= years || y === Math.min(years, 40));
+  // Always show the sim end year
+  const toShow = [...new Set([...milestoneYears, years])].sort((a,b)=>a-b).filter(y => y <= years);
+
+  toShow.forEach(y => {
+    const age = AGE_NOW + y;
+    const bear = simulate(0.04, y, annualContrib);
+    const base = simulate(0.07, y, annualContrib);
+    const bull = simulate(0.10, y, annualContrib);
+    let cost = CURRENT + annualContrib * y;
+
+    const isHighlight = y === years;
+    const tr = document.createElement('tr');
+    if (isHighlight) tr.className = 'highlight-row';
+
+    tr.innerHTML = `
+      <td>${y}年後<span class="age-badge">${age}歳</span></td>
+      <td>¥${Math.round(cost/10000)}万</td>
+      <td style="color:#f07070">¥${Math.round(bear[y]/10000)}万</td>
+      <td style="color:#39d0f0">¥${Math.round(base[y]/10000)}万</td>
+      <td style="color:#3ddc84">¥${Math.round(bull[y]/10000)}万</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ---- Main update ----
+function update() {
+  const sp = parseInt(document.getElementById('sl-sp').value) * 10000;
+  const fang = parseInt(document.getElementById('sl-fang').value) * 10000;
+  const years = parseInt(document.getElementById('sl-yr').value);
+  const annualContrib = sp + fang;
+  const customRate = parseFloat(document.getElementById('sl-custom').value);
+
+  document.getElementById('disp-sp').textContent = '¥' + (sp/10000) + '万';
+  document.getElementById('disp-fang').textContent = '¥' + (fang/10000) + '万';
+  document.getElementById('disp-yr').textContent = years + '年';
+  document.getElementById('disp-custom').textContent = customRate + '%';
+  document.getElementById('custom-rate-display').textContent = '+' + customRate + '%';
+
+  const rate = getRate();
+  const finalData = simulate(rate, years, annualContrib);
+  const finalVal = finalData[years];
+  const totalInvest = CURRENT + annualContrib * years;
+  const totalGain = finalVal - totalInvest;
+
+  document.getElementById('kpi-total-invest').textContent = fmtFull(totalInvest);
+  document.getElementById('kpi-invest-sub').textContent = `元本 ¥${Math.round(totalInvest/10000)}万`;
+  document.getElementById('kpi-final').textContent = fmtFull(finalVal);
+  document.getElementById('kpi-final-sub').textContent = `${years}年後の試算`;
+  document.getElementById('kpi-gain').textContent = fmtFull(totalGain);
+  document.getElementById('kpi-gain-sub').textContent = `+${((totalGain/totalInvest)*100).toFixed(1)}%`;
+
+  buildChart(years, annualContrib);
+  buildMilestones(years, annualContrib);
+}
+
+// Load Chart.js
+const script = document.createElement('script');
+script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js';
+script.onload = () => update();
+document.head.appendChild(script);
+</script>
+</body>
+</html>
